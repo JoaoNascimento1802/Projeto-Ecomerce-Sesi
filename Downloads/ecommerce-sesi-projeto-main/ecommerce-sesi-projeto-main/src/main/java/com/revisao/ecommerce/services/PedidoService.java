@@ -16,33 +16,30 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-public class PedidoService
-{
+public class PedidoService{
 
     @Autowired
-    PedidoRepository pedidoRepository;
+    private PedidoRepository pedidoRepository;
 
     @Autowired
-    UsuarioRepository usuarioRepository;
+    private UsuarioRepository usuarioRepository;
 
     @Autowired
-    ProdutoRepository produtoRepository;
+    private ProdutoRepository produtoRepository;
 
     @Autowired
-    ItemDoPedidoRespository itemDoPedidoRepository;
+    private ItemDoPedidoRespository itemDoPedidoRepository;
 
     @Transactional
-    public PedidoDTO inserir(PedidoDTO dto)
-    {
+    public PedidoDTO inserir(PedidoDTO dto) {
         Pedido pedido = new Pedido();
         pedido.setMomento(Instant.now());
         pedido.setStatus(StatusDoPedido.AGUARDANDO_PAGAMENTO);
 
         Usuario user = usuarioRepository.getReferenceById(dto.getClienteId());
-
         pedido.setCliente(user);
 
-        for(ItemDoPedidoDTO itemDto : dto.getItems()){
+        for (ItemDoPedidoDTO itemDto : dto.getItems()) {
             Produto produto = produtoRepository.getReferenceById(itemDto.getProdutoId());
             ItemDoPedido item = new ItemDoPedido(pedido, produto, itemDto.getQuantidade(), itemDto.getPreco());
             pedido.getItems().add(item);
@@ -50,7 +47,19 @@ public class PedidoService
 
         pedido = pedidoRepository.save(pedido);
         itemDoPedidoRepository.saveAll(pedido.getItems());
+
         return new PedidoDTO(pedido);
     }
 
+    // ✅ Corrigido: método agora é @Transactional e carrega explicitamente os items
+    @Transactional
+    public List<PedidoDTO> findAll() {
+        List<Pedido> pedidos = pedidoRepository.findAll();
+
+        // Forçar carregamento dos items
+        pedidos.forEach(pedido -> pedido.getItems().size());
+
+        return pedidos.stream().map(PedidoDTO::new).collect(Collectors.toList());
+    }
 }
+
